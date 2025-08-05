@@ -11,6 +11,31 @@ const apiRouter = require('./routes/api');
 
 require("dotenv").config()
 var app = express();
+
+// Socket.IO setup
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : ["http://localhost:3100"],
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('a user connected');
+  
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+  
+  socket.on('chat message', (msg) => {
+    console.log('message: ' + msg);
+    io.emit('chat message', msg); 
+  });
+});
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -36,6 +61,13 @@ app.use(
     credentials: true, // Allow cookies if needed
   })
 );
+
+// Make io accessible to routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 app.use('/', indexRouter);
 app.use('/admin', adminRouter);
 app.use('/api', apiRouter);
@@ -51,21 +83,20 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
   res.status(err.status || 500);
   res.render('error');
 });
 
 const port = process.env.PORT || 8010;
-app.listen(port, () => {
+// Change app.listen to server.listen
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-
-module.exports = app;
+module.exports = { app, server };

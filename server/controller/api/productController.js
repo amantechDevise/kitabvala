@@ -1,4 +1,4 @@
-const { Products, Categories, CartItems, Favorite, Orders, OrderItems, sequelize, Rating } = require("../../models");
+const { Products, Categories, CartItems, Favorite, Orders, OrderItems, sequelize, Rating, Product_Images } = require("../../models");
 
 
 module.exports = {
@@ -48,176 +48,219 @@ module.exports = {
     },
 
     // ✅ getProductsByCategory
-   getProductsByCategory: async (req, res) => {
+    getProductsByCategory: async (req, res) => {
+        try {
+            const categoryId = req.params.id;
+
+            const products = await Products.findAll({
+                where: { category_id: categoryId },
+                include: [
+                    {
+                        model: Categories,
+                        as: 'category',
+                    },
+                    {
+                        model: Rating,
+                        as: 'ratings',
+                    },
+                ],
+            });
+
+            // Add average rating and review count
+            const productsWithRatings = products.map(product => {
+                const ratings = product.ratings || [];
+                const total = ratings.reduce((sum, r) => sum + r.rating, 0);
+                const average = ratings.length > 0 ? total / ratings.length : 0;
+
+                return {
+                    ...product.toJSON(),
+                    rating: average.toFixed(1),
+                    reviews: ratings.length,
+                };
+            });
+
+            return res.status(200).json({
+                message: `Products for category ID ${categoryId}`,
+                data: productsWithRatings,
+            });
+        } catch (error) {
+            console.error('Error fetching products by category:', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    },
+
+
+    getItems: async (req, res) => {
+        try {
+            const { user_id } = req.query;
+            if (!user_id) {
+                return res.status(400).json({ message: "User ID is required" });
+            }
+            const cartItems = await CartItems.findAll({
+                where: { user_id },
+                include: [
+                    {
+                        model: Products,
+                        as: 'product',
+                        include: [
+                            {
+                                model: Product_Images,
+                                as: 'images',
+                            },
+                            {
+                                model: Rating,
+                                as: 'ratings',
+                            }
+                        ]
+                    }
+                ]
+            });
+            return res.status(200).json({
+                message: 'Cart items fetched successfully',
+                data: cartItems
+            });
+        } catch (error) {
+            console.error('Error fetching cart items:', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    },
+
+    // ✅ Add Product to Cart
+ addToCart: async (req, res) => {
     try {
-        const categoryId = req.params.id;
+        const { user_id, product_id, quantity } = req.body;
+        const io = req.io; 
 
-        const products = await Products.findAll({
-            where: { category_id: categoryId },
-            include: [
-                {
-                    model: Categories,
-                    as: 'category',
-                },
-                {
-                    model: Rating,
-                    as: 'ratings',
-                },
-            ],
+        if (!product_id) {
+            return res.status(400).json({ message: "Product ID is required" });
+        }
+
+        const existingItem = await CartItems.findOne({
+            where: { product_id }
         });
 
-        // Add average rating and review count
-        const productsWithRatings = products.map(product => {
-            const ratings = product.ratings || [];
-            const total = ratings.reduce((sum, r) => sum + r.rating, 0);
-            const average = ratings.length > 0 ? total / ratings.length : 0;
+        const qty = parseInt(quantity) || 1;
 
-            return {
-                ...product.toJSON(),
-                rating: average.toFixed(1),
-                reviews: ratings.length,
-            };
-        });
+        if (existingItem) {
+            existingItem.quantity += qty;
+            await existingItem.save();
+            
+            // Emit cart update to all clients
+            io.emit('cart:update', {
+                action: 'update',
+                userId: user_id,
+                item: existingItem
+            });
+            
+            return res.status(200).json({
+                message: 'Cart updated successfully',
+                data: existingItem
+            });
+        } else {
+            const newCartItem = await CartItems.create({
+                user_id,
+                product_id,
+                quantity: qty
+            });
 
-        return res.status(200).json({
-            message: `Products for category ID ${categoryId}`,
-            data: productsWithRatings,
-        });
+            // Emit cart add to all clients
+            io.emit('cart:add', {
+                action: 'add',
+                userId: user_id,
+                item: newCartItem
+            });
+
+            return res.status(201).json({
+                message: 'Product added to cart',
+                data: newCartItem
+            });
+        }
     } catch (error) {
-        console.error('Error fetching products by category:', error);
+        console.error('Error adding to cart:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
 },
 
+ deleteCart :async (req, res) => {
+    try {
+        const { product_id, user_id } = req.body;
+        const io = req.io;
 
- getItems :async(req,res)=>{
-  try {
-        const { user_id } = req.query; 
-        if (!user_id) {
-            return res.status(400).json({ message: "User ID is required" });
-        }
-        const cartItems = await CartItems.findAll({
-            where: { user_id },
-            include: [
-                {
-                    model: Products,
-                    as: 'product',
-                }
-            ]
+        const deleted = await CartItems.destroy({
+            where: { product_id }
         });
-        return res.status(200).json({
-            message: 'Cart items fetched successfully',
-            data: cartItems
+
+        if (deleted === 0) {
+            return res.status(404).json({ message: "Item not found in cart" });
+        }
+
+        // Emit cart remove to all clients
+        io.emit('cart:remove', {
+            action: 'remove',
+            userId: user_id,
+            productId: product_id
+        });
+
+        return res.status(200).json({ 
+            message: "Item removed from cart successfully" 
         });
     } catch (error) {
-        console.error('Error fetching cart items:', error);
+        console.error('Error removing from cart:', error);
         return res.status(500).json({ message: 'Internal server error' });
     }
- },
+},
 
-    // ✅ Add Product to Cart
-    addToCart: async (req, res) => {
-        try {
-            const { user_id, product_id, quantity } = req.body;
+addtoWishList:async (req, res) => {
+    try {
+        const { user_id, product_id } = req.body;
+        const io = req.io;
 
-            if (!product_id) {
-                return res.status(400).json({ message: " Product ID are required" });
-            }
+        if (!product_id) {
+            return res.status(400).json({ message: "Product ID is required" });
+        }
 
-            const existingItem = await CartItems.findOne({
-                where: {
-                    // user_id,
-                    product_id
-                }
+        const existingItem = await Favorite.findOne({
+            where: { product_id }
+        });
+
+        if (existingItem) {
+            await existingItem.destroy();
+
+            // Emit wishlist remove
+            io.emit('wishlist:update', {
+                action: 'remove',
+                userId: user_id,
+                productId: product_id
             });
 
-            const qty = parseInt(quantity) || 1;
-
-            if (existingItem) {
-                existingItem.quantity += qty;
-                await existingItem.save();
-                return res.status(200).json({
-                    message: 'Cart updated successfully',
-                    data: existingItem
-                });
-            } else {
-                const newCartItem = await CartItems.create({
-                    user_id,
-                    product_id,
-                    quantity: qty
-                });
-
-                return res.status(201).json({
-                    message: 'Product added to cart',
-                    data: newCartItem
-                });
-            }
-        } catch (error) {
-            console.error('Error adding to cart:', error);
-            return res.status(500).json({ message: 'Internal server error' });
-        }
-    },
-
-    // ✅ delete Product to Cart
-    deleteCart: async (req, res) => {
-        try {
-            const { product_id } = req.body
-            const deleted = await CartItems.destroy({
-                where: {
-                    product_id
-                }
+            return res.status(200).json({
+                message: 'Product removed from WishList',
+                removed: true
             });
-            if (deleted === 0) {
-                return res.status(404).json({ message: "Item not found in cart" });
-            }
-
-            return res.status(200).json({ message: "Item removed from cart successfully" });
-        } catch (error) {
-            console.error('Error removing from cart:', error);
-            return res.status(500).json({ message: 'Internal server error' });
-        }
-    },
-
-
-
-    // ✅ Add Product to wishlist
-    addtoWishList: async (req, res) => {
-        try {
-            const { user_id, product_id } = req.body;
-
-            if (!product_id) {
-                return res.status(400).json({ message: "Product ID is required" });
-            }
-
-            const existingItem = await Favorite.findOne({
-                where: { product_id }
+        } else {
+            const newCartItem = await Favorite.create({
+                user_id,
+                product_id,
             });
 
-            if (existingItem) {
-                await existingItem.destroy();
+            // Emit wishlist add
+            io.emit('wishlist:update', {
+                action: 'add',
+                userId: user_id,
+                item: newCartItem
+            });
 
-                return res.status(200).json({
-                    message: 'Product removed from WishList',
-                    removed: true
-                });
-            } else {
-                const newCartItem = await Favorite.create({
-                    user_id,
-                    product_id,
-                });
-
-                return res.status(201).json({
-                    message: 'Product added to WishList',
-                    data: newCartItem,
-                    removed: false
-                });
-            }
-
-        } catch (error) {
-            console.error('Error toggling WishList item:', error);
-            return res.status(500).json({ message: 'Internal server error' });
+            return res.status(201).json({
+                message: 'Product added to WishList',
+                data: newCartItem,
+                removed: false
+            });
         }
-    },
+    } catch (error) {
+        console.error('Error toggling WishList item:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+},
 
     add_Oder: async (req, res) => {
         const { user_id, items } = req.body;

@@ -97,7 +97,7 @@ const ProductList = () => {
                 <td className="px-6 py-4">
                   {product.image ? (
                     <img
-                      src={`${API_BASE_URL}/${product.image || product.image}`}
+                      src={`${API_BASE_URL}${product.image || product.image}`}
                       alt={product.name}
                       className="w-16 h-12 object-cover rounded"
                     />

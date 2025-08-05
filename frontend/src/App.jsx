@@ -17,7 +17,7 @@ import AdminLayouts from "./pages/admin/AdminLayout";
 import CategoryList from "./pages/admin/pages/Categories/CateListing";
 import Dashboard from "./pages/admin/Dashboard";
 import ProductList from "./pages/admin/pages/Product/ListProduct";
-import AdminPrivateRoute from "./pages/admin/context/AdminPrivateRoute";
+import AdminPrivateRoute from "./contaxt/AdminPrivateRoute";
 import AddProduct from "./pages/admin/pages/Product/AddProduct";
 import EditProduct from "./pages/admin/pages/Product/EditProduct";
 import ContactUsList from "./pages/admin/pages/ContactUs/ListContact";
