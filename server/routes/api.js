@@ -7,11 +7,15 @@ var apiRouter = express.Router();
 
 // =================Home Routes==================
 apiRouter.get('/home', homeController.home_listing)
+apiRouter.get('/getAll', homeController.list_ProductsAll)
+
 // =================Contact us Routes==================
 apiRouter.post('/contact', ContactController.contactAdd)
 // =================Categories Routes==================
 apiRouter.get('/category', productController.listing_cate)
 apiRouter.get('/products', productController.list_products)
+apiRouter.get('/products', productController.list_products)
+apiRouter.get('/products/details/:id', productController.productDetails)
 apiRouter.get('/categories/:id', productController.getProductsByCategory)
 apiRouter.get('/items', productController.getItems)
 apiRouter.post('/add/cart', productController.addToCart)

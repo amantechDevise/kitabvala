@@ -28,6 +28,8 @@ import OrderListing from "./pages/admin/pages/Orders/orderListing";
 import Productpage from "./pages/website/Productspage";
 import AddCart from "./pages/website/components/AddCartPage";
 import AddImage from "./pages/admin/pages/Product/AddImages";
+import ProductDetails from "./pages/website/components/ProductDetails";
+import About from "./pages/website/About";
 
 function App() {
   return (
@@ -43,7 +45,9 @@ function App() {
               <main className="flex-grow m-auto">
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
                   <Route path="/category/:id" element={<Productpage />} />
+                  <Route path="/product/:id" element={<ProductDetails />} />
                   <Route path="/cart" element={<AddCart />} />
                 </Routes>
               </main>

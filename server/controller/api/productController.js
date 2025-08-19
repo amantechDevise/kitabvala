@@ -125,142 +125,179 @@ module.exports = {
         }
     },
 
+
+  productDetails: async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const getProduct = await Products.findOne({
+            where: { id },
+            include: [
+                {
+                    model: Product_Images,
+                    as: 'images',
+                },
+                {
+                    model: Rating,
+                    as: 'ratings',
+                }
+            ]
+        });
+
+        if (!getProduct) {
+            return res.status(404).json({
+                message: 'Product not found'
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Product details fetched successfully',
+            data: getProduct
+        });
+    } catch (error) {
+        console.error('Error fetching product details:', error);
+        return res.status(500).json({
+            message: 'Internal server error'
+        });
+    }
+},
+
     // ✅ Add Product to Cart
- addToCart: async (req, res) => {
-    try {
-        const { user_id, product_id, quantity } = req.body;
-        const io = req.io; 
+    addToCart: async (req, res) => {
+        try {
+            const { user_id, product_id, quantity } = req.body;
+            const io = req.io;
 
-        if (!product_id) {
-            return res.status(400).json({ message: "Product ID is required" });
+            if (!product_id) {
+                return res.status(400).json({ message: "Product ID is required" });
+            }
+
+            const existingItem = await CartItems.findOne({
+                where: { product_id }
+            });
+
+            const qty = parseInt(quantity) || 1;
+
+            if (existingItem) {
+                existingItem.quantity += qty;
+                await existingItem.save();
+
+                // Emit cart update to all clients
+                io.emit('cart:update', {
+                    action: 'update',
+                    userId: user_id,
+                    item: existingItem
+                });
+
+                return res.status(200).json({
+                    message: 'Cart updated successfully',
+                    data: existingItem
+                });
+            } else {
+                const newCartItem = await CartItems.create({
+                    user_id,
+                    product_id,
+                    quantity: qty
+                });
+
+                // Emit cart add to all clients
+                io.emit('cart:add', {
+                    action: 'add',
+                    userId: user_id,
+                    item: newCartItem
+                });
+
+                return res.status(201).json({
+                    message: 'Product added to cart',
+                    data: newCartItem
+                });
+            }
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            return res.status(500).json({ message: 'Internal server error' });
         }
+    },
 
-        const existingItem = await CartItems.findOne({
-            where: { product_id }
-        });
+    deleteCart: async (req, res) => {
+        try {
+            const { product_id, user_id } = req.body;
+            const io = req.io;
 
-        const qty = parseInt(quantity) || 1;
-
-        if (existingItem) {
-            existingItem.quantity += qty;
-            await existingItem.save();
-            
-            // Emit cart update to all clients
-            io.emit('cart:update', {
-                action: 'update',
-                userId: user_id,
-                item: existingItem
-            });
-            
-            return res.status(200).json({
-                message: 'Cart updated successfully',
-                data: existingItem
-            });
-        } else {
-            const newCartItem = await CartItems.create({
-                user_id,
-                product_id,
-                quantity: qty
+            const deleted = await CartItems.destroy({
+                where: { product_id }
             });
 
-            // Emit cart add to all clients
-            io.emit('cart:add', {
-                action: 'add',
-                userId: user_id,
-                item: newCartItem
-            });
+            if (deleted === 0) {
+                return res.status(404).json({ message: "Item not found in cart" });
+            }
 
-            return res.status(201).json({
-                message: 'Product added to cart',
-                data: newCartItem
-            });
-        }
-    } catch (error) {
-        console.error('Error adding to cart:', error);
-        return res.status(500).json({ message: 'Internal server error' });
-    }
-},
-
- deleteCart :async (req, res) => {
-    try {
-        const { product_id, user_id } = req.body;
-        const io = req.io;
-
-        const deleted = await CartItems.destroy({
-            where: { product_id }
-        });
-
-        if (deleted === 0) {
-            return res.status(404).json({ message: "Item not found in cart" });
-        }
-
-        // Emit cart remove to all clients
-        io.emit('cart:remove', {
-            action: 'remove',
-            userId: user_id,
-            productId: product_id
-        });
-
-        return res.status(200).json({ 
-            message: "Item removed from cart successfully" 
-        });
-    } catch (error) {
-        console.error('Error removing from cart:', error);
-        return res.status(500).json({ message: 'Internal server error' });
-    }
-},
-
-addtoWishList:async (req, res) => {
-    try {
-        const { user_id, product_id } = req.body;
-        const io = req.io;
-
-        if (!product_id) {
-            return res.status(400).json({ message: "Product ID is required" });
-        }
-
-        const existingItem = await Favorite.findOne({
-            where: { product_id }
-        });
-
-        if (existingItem) {
-            await existingItem.destroy();
-
-            // Emit wishlist remove
-            io.emit('wishlist:update', {
+            // Emit cart remove to all clients
+            io.emit('cart:remove', {
                 action: 'remove',
                 userId: user_id,
                 productId: product_id
             });
 
             return res.status(200).json({
-                message: 'Product removed from WishList',
-                removed: true
+                message: "Item removed from cart successfully"
             });
-        } else {
-            const newCartItem = await Favorite.create({
-                user_id,
-                product_id,
-            });
-
-            // Emit wishlist add
-            io.emit('wishlist:update', {
-                action: 'add',
-                userId: user_id,
-                item: newCartItem
-            });
-
-            return res.status(201).json({
-                message: 'Product added to WishList',
-                data: newCartItem,
-                removed: false
-            });
+        } catch (error) {
+            console.error('Error removing from cart:', error);
+            return res.status(500).json({ message: 'Internal server error' });
         }
-    } catch (error) {
-        console.error('Error toggling WishList item:', error);
-        return res.status(500).json({ message: 'Internal server error' });
-    }
-},
+    },
+
+    addtoWishList: async (req, res) => {
+        try {
+            const { user_id, product_id } = req.body;
+            const io = req.io;
+
+            if (!product_id) {
+                return res.status(400).json({ message: "Product ID is required" });
+            }
+
+            const existingItem = await Favorite.findOne({
+                where: { product_id }
+            });
+
+            if (existingItem) {
+                await existingItem.destroy();
+
+                // Emit wishlist remove
+                io.emit('wishlist:update', {
+                    action: 'remove',
+                    userId: user_id,
+                    productId: product_id
+                });
+
+                return res.status(200).json({
+                    message: 'Product removed from WishList',
+                    removed: true
+                });
+            } else {
+                const newCartItem = await Favorite.create({
+                    user_id,
+                    product_id,
+                });
+
+                // Emit wishlist add
+                io.emit('wishlist:update', {
+                    action: 'add',
+                    userId: user_id,
+                    item: newCartItem
+                });
+
+                return res.status(201).json({
+                    message: 'Product added to WishList',
+                    data: newCartItem,
+                    removed: false
+                });
+            }
+        } catch (error) {
+            console.error('Error toggling WishList item:', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    },
 
     add_Oder: async (req, res) => {
         const { user_id, items } = req.body;

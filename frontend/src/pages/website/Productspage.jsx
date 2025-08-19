@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import axios from "axios";
+import DetailsModal from "./components/DetailsModal";
 
 const Productpage = () => {
   const { id } = useParams();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
+  const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [cartItems, setCartItems] = useState(() => {
     const saved = localStorage.getItem("cartItems");
@@ -98,6 +100,14 @@ const Productpage = () => {
     fetchProductsByCategory();
   }, [id]);
 
+  const openModal = (product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
@@ -117,13 +127,18 @@ const Productpage = () => {
                       {product.badge}
                     </span>
                   )}
-                  <img
-                    src={`${API_BASE_URL}${product.image}`}
-                    alt={product.name}
-                    className="w-full h-80 object-cover object-top"
-                  />
+              <Link to={`/product/${product.id}`}>
+                    <img
+                      src={`${API_BASE_URL}${product.image}`}
+                      alt={product.name}
+                      className="w-full h-80 object-cover object-top"
+                    />
+                  </Link>
                   <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button className="bg-white text-gray-900 w-10 h-10 rounded-full flex items-center justify-center shadow-md mx-1 hover:bg-gray-100 transition">
+                  <button
+                      onClick={() => openModal(product)}
+                      className="bg-white text-gray-900 w-10 h-10 rounded-full flex items-center justify-center shadow-md mx-1 hover:bg-gray-100 transition"
+                    >
                       <i className="ri-eye-line" />
                     </button>
                     <button
@@ -155,9 +170,11 @@ const Productpage = () => {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-1">
-                    {product.name}
-                  </h3>
+                  <Link to={`/product/${product.id}`}>
+                    <h3 className="font-medium text-gray-900 mb-1 hover:text-primary">
+                      {product.name}
+                    </h3>
+                  
                   <div className="flex text-amber-400 text-sm">
                     {Array.from({ length: 5 }, (_, i) => (
                       <i
@@ -185,6 +202,7 @@ const Productpage = () => {
                       </p>
                     )}
                   </div>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -193,6 +211,21 @@ const Productpage = () => {
           <p className="text-center text-gray-500">No products found.</p>
         )}
       </div>
+        {isModalOpen && selectedProduct && (
+      <div className="fixed inset-0 bg-black/50 bg-opacity-70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+         
+              <DetailsModal 
+                product={selectedProduct} 
+                onClose={closeModal}
+                cartItems={cartItems}
+                setCartItems={setCartItems}
+                wishlistItems={wishlistItems}
+                setWishlistItems={setWishlistItems}
+              />
+            </div>
+          </div>
+        )}
     </section>
   );
 };

@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Favorite, CartItems, Products, Rating } = require("../../models");
+const { Favorite, CartItems, Products, Rating, Categories } = require("../../models");
 
 module.exports = {
   home_listing: async (req, res) => {
@@ -112,5 +112,32 @@ module.exports = {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
   }
+},
+
+    list_ProductsAll: async (req, res) => {
+    try {
+        const products = await Products.findAll({
+            include: [
+                {
+                    model: Categories,
+                    as: 'category',
+                },
+                {
+                    model: Rating,
+                    as: 'ratings',
+                },
+             
+            ],
+            order: [['createdAt', 'DESC']] 
+        });
+
+        return res.status(200).json({
+            message: 'All products fetched successfully',
+            data: products,
+        });
+    } catch (error) {
+        console.error('Error listing products:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
 },
 };

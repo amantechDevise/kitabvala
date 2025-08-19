@@ -68,7 +68,7 @@ function Dashboard() {
         </div> */}
       </div>
       <section className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <Link to="/admin/users">
+        <Link to="/admin/customers">
         <div className="flex items-center p-8 bg-white shadow rounded-lg">
           <div className="inline-flex flex-shrink-0 items-center justify-center h-16 w-16 text-blue-600 bg-blue-100 rounded-full mr-6">
             <svg
