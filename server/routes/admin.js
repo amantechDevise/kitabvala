@@ -3,12 +3,13 @@ const authController = require('../controller/admin/authController');
 const CategoryController = require('../controller/admin/CategoryController');
 const productController = require('../controller/admin/productController');
 const authenticateToken = require('../middleware/verifyToken');
+const userController = require('../controller/api/userController');
 var router = express.Router();
 
 router.post('/adminLogin', authController.Adminlogin)
 /* GET users listing. */
-router.post('/signup', authController.signup)
-router.post('/login', authController.login)
+router.post('/signup', userController.signup)
+router.post('/login', userController.login)
 router.get('/dashboard',authenticateToken, authController.dashboard)
 
 // =================Users Routes==================

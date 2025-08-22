@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import { useCart } from "../services/CartContext";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -9,6 +10,7 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState("");
+    const { updateCartCount, fetchCartCount } = useCart(); 
   const [cartItems, setCartItems] = useState(() => {
     const saved = localStorage.getItem("cartItems");
     return saved ? JSON.parse(saved) : [];
@@ -24,8 +26,20 @@ const ProductDetails = () => {
         const response = await axios.get(
           `${API_BASE_URL}/api/products/details/${id}`
         );
-        setProduct(response.data.data);
-        setSelectedImage(response.data.data.image);
+        const fetchedProduct = response.data.data;
+
+        setProduct(fetchedProduct);
+        setSelectedImage(fetchedProduct.image);
+
+        if (fetchedProduct.favorites && fetchedProduct.favorites.length > 0) {
+          setWishlistItems((prev) => [
+            ...new Set([...prev, fetchedProduct.id]),
+          ]);
+        }
+        if (fetchedProduct.cart_items && fetchedProduct.cart_items.length > 0) {
+          setCartItems((prev) => [...new Set([...prev, fetchedProduct.id])]);
+        }
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching product details:", error);
@@ -44,21 +58,22 @@ const ProductDetails = () => {
     return wishlistItems.includes(productId);
   };
 
-  const handleCartToggle = async () => {
+ const handleCartToggle = async () => {
     const user_id = 1; // Replace with actual user ID
 
     if (isInCart(product.id)) {
-      // Remove from cart
+      // ✅ Remove from cart
       try {
         await axios.delete(`${API_BASE_URL}/api/cart/remove`, {
           data: { product_id: product.id },
         });
         setCartItems((prev) => prev.filter((id) => id !== product.id));
+        updateCartCount(-1); // 👈 cart count decrement
       } catch (error) {
         console.error("Error removing from cart:", error);
       }
     } else {
-      // Add to cart
+      // ✅ Add to cart
       try {
         await axios.post(`${API_BASE_URL}/api/add/cart`, {
           user_id,
@@ -66,11 +81,13 @@ const ProductDetails = () => {
           quantity: quantity,
         });
         setCartItems((prev) => [...prev, product.id]);
+        updateCartCount(1); // 👈 cart count increment
       } catch (error) {
         console.error("Error adding to cart:", error);
       }
     }
   };
+
 
   const handleWishlistToggle = async () => {
     const user_id = 1;
@@ -177,17 +194,17 @@ const ProductDetails = () => {
               />
             </div>
             <div className="flex space-x-4 mb-6">
-              <button
-                onClick={handleCartToggle}
-                className={`flex gap-2 items-center px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  isInCart(product.id)
-                    ? "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500"
-                    : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
-                }`}
-              >
-                <i className="ri-shopping-bag-line" />
-                {isInCart(product.id) ? "Remove from Cart" : "Add to Cart"}
-              </button>
+                 <button
+            onClick={handleCartToggle}
+            className={`flex gap-2 items-center px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              isInCart(product.id)
+                ? "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+            }`}
+          >
+            <i className="ri-shopping-bag-line" />
+            {isInCart(product.id) ? "Remove from Cart" : "Add to Cart"}
+          </button>
               <button
                 onClick={handleWishlistToggle}
                 className={`flex gap-2 items-center px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${

@@ -22,11 +22,21 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       defaultValue: ""
     },
+    address: {
+      type: DataTypes.STRING(175),
+      allowNull: false,
+      defaultValue: ""
+    },
+        gender: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      comment: '1=>boy,2=>girl,'
+    },
     phone: {
       type: DataTypes.BIGINT,
       allowNull: false,
       defaultValue: 0,
-
     },
     role: {
       type: DataTypes.INTEGER,

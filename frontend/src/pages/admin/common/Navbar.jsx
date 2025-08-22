@@ -43,7 +43,7 @@ const AdminNavbar = ({ userData }) => {
                   <button
                     onClick={() => {
                       localStorage.removeItem('token');
-                      window.location.href = '/login';
+                      window.location.href = '/admin/tech/login';
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
                   >

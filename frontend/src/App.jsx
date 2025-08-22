@@ -30,6 +30,10 @@ import AddCart from "./pages/website/components/AddCartPage";
 import AddImage from "./pages/admin/pages/Product/AddImages";
 import ProductDetails from "./pages/website/components/ProductDetails";
 import About from "./pages/website/About";
+import NewArrivals from "./pages/website/components/NewArrivals";
+import { CartProvider } from "./pages/website/services/CartContext";
+import WebLogin from "./pages/website/Auth/WebLogin";
+import WebRegister from "./pages/website/Auth/WebRegister";
 
 function App() {
   return (
@@ -41,6 +45,7 @@ function App() {
           path="/*"
           element={
             <>
+                <CartProvider>
               <Header />
               <main className="flex-grow m-auto">
                 <Routes>
@@ -49,16 +54,19 @@ function App() {
                   <Route path="/category/:id" element={<Productpage />} />
                   <Route path="/product/:id" element={<ProductDetails />} />
                   <Route path="/cart" element={<AddCart />} />
+                  <Route path="/new-arrivals" element={<NewArrivals />} />
                 </Routes>
               </main>
               <Footer />
+              </CartProvider>
             </>
           }
         />
 
         {/* Admin Auth Routes (no header/footer) */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/admin/tech/login" element={<Login />} />
+        <Route path="/login" element={<WebLogin />} />
+        <Route path="/register" element={<WebRegister />} />
 
         {/* Protected Admin Routes */}
         <Route

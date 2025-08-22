@@ -140,7 +140,9 @@ module.exports = {
                 {
                     model: Rating,
                     as: 'ratings',
-                }
+                },
+                { model: Favorite, as: 'favorites' },
+                { model: CartItems, as: 'cart_items' }
             ]
         });
 
@@ -149,6 +151,7 @@ module.exports = {
                 message: 'Product not found'
             });
         }
+         
 
         return res.status(200).json({
             message: 'Product details fetched successfully',
@@ -246,6 +249,29 @@ module.exports = {
             return res.status(500).json({ message: 'Internal server error' });
         }
     },
+
+    getWishlistItems: async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const items = await Favorite.findAll({
+      where: { user_id },
+      attributes: ['product_id'],
+    });
+
+    return res.status(200).json({
+      message: 'Wishlist items fetched successfully',
+      data: items,
+    });
+  } catch (error) {
+    console.error("Error fetching wishlist items:", error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+},
 
     addtoWishList: async (req, res) => {
         try {

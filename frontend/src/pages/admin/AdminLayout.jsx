@@ -15,7 +15,7 @@ const AdminLayouts = () => {
     const fetchDashboardData = async () => {
       const token = localStorage.getItem('adminToken');
       if (!token) {
-        navigate('/login'); // Redirect if no token
+        navigate('/admin/tech/login'); // Redirect if no token
         return;
       }
 
@@ -30,11 +30,11 @@ const AdminLayouts = () => {
         if (res.status === 200 && res.data.loginUser) {
           setUserData(res.data.loginUser);
         } else {
-          navigate('/login');
+          navigate('/admin/tech/login');
         }
       } catch (error) {
         console.error('Error fetching dashboard:', error);
-        navigate('/login'); // Redirect on error
+        navigate('/admin/tech/login'); // Redirect on error
       }
     };
 

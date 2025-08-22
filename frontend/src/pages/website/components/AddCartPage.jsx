@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "../services/CartContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function AddCart() {
   const [cartItems, setCartItems] = useState([]);
   const navigate = useNavigate();
+  const user_id = 1; 
+  const { cartCount, updateCartCount } = useCart(); 
 
+  /** --------------------------
+   * Fetch Cart Items
+   ----------------------------*/
   useEffect(() => {
-    const user_id = 1;
-
     const fetchCartItems = async () => {
       try {
         const response = await axios.get(
@@ -25,10 +29,9 @@ function AddCart() {
     fetchCartItems();
   }, []);
 
-   useEffect(() => {
-    localStorage.setItem('cartCount', cartItems.length);
-    window.dispatchEvent(new Event('storage'));
-  }, [cartItems]);
+  /** --------------------------
+   * Quantity Change
+   ----------------------------*/
   const handleQuantityChange = (id, quantity) => {
     setCartItems((prevItems) =>
       prevItems.map((item) =>
@@ -37,23 +40,37 @@ function AddCart() {
     );
   };
 
+  /** --------------------------
+   * Remove Item from Cart
+   ----------------------------*/
+  const handleRemoveItem = async (productId) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/cart/remove`, {
+        data: { user_id, product_id: productId },
+      });
+
+      // Remove from local state
+      setCartItems((prevItems) =>
+        prevItems.filter((item) => item.product_id !== productId)
+      );
+
+      // ✅ Update global cart count
+      updateCartCount(-1);
+    } catch (error) {
+      console.error("Error removing item from cart:", error);
+    }
+  };
+
+  /** --------------------------
+   * Admin Image Click
+   ----------------------------*/
   const handleImageClick = (productId) => {
     navigate(`/admin/products/add-image/${productId}`);
   };
 
-  const handleRemoveItem = async (productId) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/api/cart/remove`, {
-        data: { product_id: productId }
-      });
-      // Remove the item from the local state
-      setCartItems(prevItems => prevItems.filter(item => item.product_id !== productId));
-    } catch (error) {
-      console.error("Error removing item from cart:", error);
-      // Optional: Show error message to user
-    }
-  };
-
+  /** --------------------------
+   * Render Cart Items
+   ----------------------------*/
   return (
     <div className="bg-gray-100">
       <div className="container mx-auto px-4 py-8">
@@ -65,18 +82,19 @@ function AddCart() {
               ? `${API_BASE_URL}${item.product.image}`
               : "https://via.placeholder.com/600x500";
 
-            // Calculate average rating
-            const avgRating = item.product?.ratings?.length > 0
-              ? item.product.ratings.reduce((acc, curr) => acc + curr.rating, 0) / item.product.ratings.length
-              : 0;
+            const avgRating =
+              item.product?.ratings?.length > 0
+                ? item.product.ratings.reduce((acc, curr) => acc + curr.rating, 0) /
+                  item.product.ratings.length
+                : 0;
 
             return (
               <div
                 key={item.id}
                 className="flex flex-wrap -mx-4 mb-8 bg-white p-6 rounded-lg shadow-md relative"
               >
-                {/* Remove button (X icon) */}
-                <button 
+                {/* Remove Button */}
+                <button
                   onClick={() => handleRemoveItem(item.product_id)}
                   className="absolute top-4 right-4 text-gray-500 hover:text-red-500 focus:outline-none"
                   aria-label="Remove item"
@@ -84,8 +102,7 @@ function AddCart() {
                   <i className="ri-close-line text-2xl"></i>
                 </button>
 
-                {/* Rest of your cart item JSX remains the same */}
-                {/* Product Images */}
+                {/* Product Image */}
                 <div className="w-full md:w-1/2 px-4 mb-8">
                   <img
                     src={imageUrl}
@@ -95,19 +112,18 @@ function AddCart() {
                   />
                   {(item.product?.image || item.product?.images?.length > 0) && (
                     <div className="flex gap-4 py-4 justify-center overflow-x-auto">
-                      {/* Main image thumbnail */}
                       {item.product.image && (
                         <img
                           src={`${API_BASE_URL}${item.product.image}`}
                           alt="Main thumbnail"
                           className="size-16 sm:size-20 object-cover rounded-md cursor-pointer opacity-100"
                           onClick={() =>
-                            (document.getElementById(`mainImage-${item.id}`).src =
-                              `${API_BASE_URL}${item.product.image}`)
+                            (document.getElementById(
+                              `mainImage-${item.id}`
+                            ).src = `${API_BASE_URL}${item.product.image}`)
                           }
                         />
                       )}
-                      {/* Additional images */}
                       {item.product?.images?.map((img, index) => (
                         <img
                           key={index}
@@ -115,8 +131,9 @@ function AddCart() {
                           alt={`Thumbnail ${index + 1}`}
                           className="size-16 sm:size-20 object-cover rounded-md cursor-pointer opacity-60 hover:opacity-100 transition duration-300"
                           onClick={() =>
-                            (document.getElementById(`mainImage-${item.id}`).src =
-                              `${API_BASE_URL}${img.images}`)
+                            (document.getElementById(
+                              `mainImage-${item.id}`
+                            ).src = `${API_BASE_URL}${img.images}`)
                           }
                         />
                       ))}
@@ -134,9 +151,11 @@ function AddCart() {
                       ${item.product?.price}
                     </span>
                   </div>
+
                   <div className="flex items-center mb-4">
                     {[...Array(5)].map((_, i) => {
-                      const starFill = i < Math.round(avgRating) ? "currentColor" : "none";
+                      const starFill =
+                        i < Math.round(avgRating) ? "currentColor" : "none";
                       return (
                         <svg
                           key={i}
@@ -160,9 +179,11 @@ function AddCart() {
                         : "No ratings yet"}
                     </span>
                   </div>
+
                   <p className="text-gray-700 mb-6">
                     {item.product?.description || "No description available."}
                   </p>
+
                   <div className="mb-6">
                     <label
                       htmlFor={`quantity-${item.id}`}
@@ -181,16 +202,6 @@ function AddCart() {
                       }
                       className="w-12 text-center rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     />
-                  </div>
-                  <div className="flex space-x-4 mb-6">
-                    <button className="bg-indigo-600 flex gap-2 items-center text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    <i className="ri-shopping-bag-line" />
-                      Add to Cart
-                    </button>
-                    <button className="bg-gray-200 flex gap-2 items-center text-gray-800 px-6 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-                        <i className="ri-heart-line" />
-                      Wishlist
-                    </button>
                   </div>
                 </div>
               </div>

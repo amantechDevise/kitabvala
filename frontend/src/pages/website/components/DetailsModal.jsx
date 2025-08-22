@@ -1,17 +1,22 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useCart } from "../services/CartContext";
 
-function DetailsModal({ product, onClose, cartItems, setCartItems, wishlistItems, setWishlistItems }) {
+function DetailsModal({ product, onClose, wishlistItems, setWishlistItems }) {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(product.image || "");
+  
+  // Use cart context instead of local state
+  const { cartItems, updateCartCount } = useCart();
 
+  // Safe version of isInCart function
   const isInCart = (productId) => {
-    return cartItems.includes(productId);
+    return cartItems && cartItems.includes && cartItems.includes(productId);
   };
 
   const isInWishlist = (productId) => {
-    return wishlistItems.includes(productId);
+    return wishlistItems && wishlistItems.includes && wishlistItems.includes(productId);
   };
 
   const handleCartToggle = async () => {
@@ -21,9 +26,9 @@ function DetailsModal({ product, onClose, cartItems, setCartItems, wishlistItems
       // Remove from cart
       try {
         await axios.delete(`${API_BASE_URL}/api/cart/remove`, {
-          data: { product_id: product.id },
+          data: { product_id: product.id, user_id },
         });
-        setCartItems((prev) => prev.filter((id) => id !== product.id));
+        updateCartCount(-1); // Update cart count in context
       } catch (error) {
         console.error("Error removing from cart:", error);
       }
@@ -35,7 +40,7 @@ function DetailsModal({ product, onClose, cartItems, setCartItems, wishlistItems
           product_id: product.id,
           quantity: quantity,
         });
-        setCartItems((prev) => [...prev, product.id]);
+        updateCartCount(1); // Update cart count in context
       } catch (error) {
         console.error("Error adding to cart:", error);
       }

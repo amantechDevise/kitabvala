@@ -2,9 +2,12 @@ var express = require('express');
 const productController = require('../controller/api/productController');
 const ContactController = require('../controller/api/ContactController');
 const homeController = require('../controller/api/homeController');
+const userController = require('../controller/api/userController');
+const userVerifyToken = require('../middleware/userVerifyToken');
 
 var apiRouter = express.Router();
-
+apiRouter.get("/profile", userVerifyToken, userController.getProfile);
+apiRouter.put("/profile", userVerifyToken, userController.updateProfile);
 // =================Home Routes==================
 apiRouter.get('/home', homeController.home_listing)
 apiRouter.get('/getAll', homeController.list_ProductsAll)
@@ -18,6 +21,8 @@ apiRouter.get('/products', productController.list_products)
 apiRouter.get('/products/details/:id', productController.productDetails)
 apiRouter.get('/categories/:id', productController.getProductsByCategory)
 apiRouter.get('/items', productController.getItems)
+apiRouter.get("/wishlist/items", productController.getWishlistItems);
+
 apiRouter.post('/add/cart', productController.addToCart)
 apiRouter.delete('/cart/remove', productController.deleteCart);
 apiRouter.post('/add/wishList', productController.addtoWishList)

@@ -1,21 +1,22 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
+import { useCart } from '../pages/website/services/CartContext';
 
 function Header() {
-  const [cartCount, setCartCount] = useState(0);
+  const currentUserId = 1;
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
-  
-  // Dropdown states
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [shopTimeoutId, setShopTimeoutId] = useState(null);
   const [isUserOpen, setIsUserOpen] = useState(false);
   const [userTimeoutId, setUserTimeoutId] = useState(null);
+   const userName = localStorage.getItem("userName");
+  const { cartCount } = useCart();
 
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -27,57 +28,36 @@ function Header() {
         setLoading(false);
       }
     };
-
     fetchCategories();
   }, [API_BASE_URL]);
 
-  // Fetch cart count
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/home`);
-        const count = res.data.data.cartItemCount;
-        setCartCount(count);
-        localStorage.setItem('cartCount', count);
-      } catch (err) {
-        console.error('Error fetching cart count:', err);
-      }
-    };
-
-    fetchCartCount();
-
-    const handleStorageChange = () => {
-      const count = localStorage.getItem('cartCount');
-      if (count) setCartCount(Number(count));
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Shop dropdown handlers
-  const handleShopMouseEnter = () => {
-    clearTimeout(shopTimeoutId);
-    setIsShopOpen(true);
+  const handleShopMouseEnter = () => { 
+    clearTimeout(shopTimeoutId); 
+    setIsShopOpen(true); 
   };
-
+  
   const handleShopMouseLeave = () => {
     const id = setTimeout(() => setIsShopOpen(false), 200);
     setShopTimeoutId(id);
   };
 
-  // User dropdown handlers
-  const handleUserMouseEnter = () => {
-    clearTimeout(userTimeoutId);
-    setIsUserOpen(true);
+  const handleUserMouseEnter = () => { 
+    clearTimeout(userTimeoutId); 
+    setIsUserOpen(true); 
   };
-
+  
   const handleUserMouseLeave = () => {
     const id = setTimeout(() => setIsUserOpen(false), 200);
     setUserTimeoutId(id);
   };
 
-  // Clean up timeouts
+    const handleLogout = () => {
+    localStorage.removeItem("webToken");
+    localStorage.removeItem("userName");
+    navigate("/"); // logout ke baad home bhej do
+    window.location.reload(); // refresh to update header
+  };
+
   useEffect(() => {
     return () => {
       if (shopTimeoutId) clearTimeout(shopTimeoutId);
@@ -90,18 +70,15 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        {/* Logo */}
         <Link to="/" className="font-['Pacifico'] text-2xl text-primary">
           logo
         </Link>
         
-        {/* Main Navigation */}
         <nav className="hidden md:flex space-x-8">
           <Link to="/" className="text-gray-900 font-medium hover:text-primary transition-colors">
             Home
           </Link>
           
-          {/* Shop Dropdown */}
           <div 
             className="relative"
             onMouseEnter={handleShopMouseEnter}
@@ -142,9 +119,10 @@ function Header() {
             </div>
           </div>
           
-          <a href="#" className="text-gray-900 font-medium hover:text-primary transition-colors">
+          <Link to="/new-arrivals" className="text-gray-900 font-medium hover:text-primary transition-colors">
             New Arrivals
-          </a>
+          </Link>
+         
           <Link to="" className="text-gray-900 font-medium hover:text-primary transition-colors">
             Sale
           </Link>
@@ -153,42 +131,70 @@ function Header() {
           </Link>
         </nav>
         
-        {/* Utility Icons */}
         <div className="flex items-center space-x-6">
-          {/* Search */}
           <div className="relative">
             <button className="w-10 h-10 flex items-center justify-center text-black hover:text-primary transition-colors">
               <i className="ri-search-line text-xl" />
             </button>
           </div>
           
-          {/* User Dropdown */}
-          <div 
-            className="relative"
-            onMouseEnter={handleUserMouseEnter}
-            onMouseLeave={handleUserMouseLeave}
-          >
-            <button className="w-10 h-10 flex items-center justify-center text-gray-700 hover:text-primary transition-colors">
-              <i className="ri-user-line text-xl" />
+        <div
+      className="relative"
+      onMouseEnter={handleUserMouseEnter}
+      onMouseLeave={handleUserMouseLeave}
+    >
+      <button className="w-10 h-10 flex items-center justify-center text-gray-700 hover:text-primary transition-colors">
+        <i className="ri-user-line text-xl" />
+      </button>
+
+      <div
+        className={`absolute right-0 mt-2 w-48 bg-white shadow-lg rounded transition-all duration-300 ${
+          isUserOpen ? "block" : "hidden"
+        }`}
+      >
+        {userName ? (
+          <>
+            <span className="block px-4 py-3 text-sm text-gray-700 font-semibold">
+              👋 {userName}
+            </span>
+            <Link
+              to="/account"
+              className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              My Account
+            </Link>
+            <Link
+              to="/orders"
+              className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Orders
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Logout
             </button>
-            
-            <div className={`absolute right-0 mt-2 w-48 bg-white shadow-lg rounded transition-all duration-300 ${isUserOpen ? 'block' : 'hidden'}`}>
-              <a href="#" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                Sign In
-              </a>
-              <a href="#" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                Register
-              </a>
-              <a href="#" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                My Account
-              </a>
-              <a href="#" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                Orders
-              </a>
-            </div>
-          </div>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/login"
+              className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/register"
+              className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Register
+            </Link>
+          </>
+        )}
+      </div>
+    </div>
           
-          {/* Cart */}
           <div className="relative">
             <Link to="/cart" className="relative w-10 h-10 text-gray-700 hover:text-primary transition-colors">
               <i className="ri-shopping-bag-line text-xl" />
@@ -200,7 +206,6 @@ function Header() {
             </Link>
           </div>
           
-          {/* Mobile Menu Toggle */}
           <button 
             className="md:hidden w-10 h-10 flex items-center justify-center text-gray-700"
             onClick={toggleMobileMenu}
@@ -209,7 +214,6 @@ function Header() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         <div className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden bg-white border-t border-gray-200`}>
           <div className="container mx-auto px-4 py-3 space-y-3">
             <Link to="/" className="block py-2 text-black font-medium" onClick={() => setMobileMenuOpen(false)}>

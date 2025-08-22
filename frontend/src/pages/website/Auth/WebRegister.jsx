@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-function Signup() {
+function WebRegister() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,9 +20,8 @@ function Signup() {
         password,
       });
       const { token } = response.data;
-      localStorage.setItem('adminToken', token);
-      alert('Signup successful');
-      navigate('/admin/tech/login');
+      localStorage.setItem('webToken', token);
+      navigate('/login');
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -121,4 +120,4 @@ function Signup() {
   );
 }
 
-export default Signup;
+export default WebRegister;
